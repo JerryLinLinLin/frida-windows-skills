@@ -1,6 +1,6 @@
 # frida-windows-skills
 
-A Claude Code **skill** — [`frida-windows-re`](frida-windows-re/SKILL.md) — for
+A AI Agent **skill** — [`frida-windows-re`](frida-windows-re/SKILL.md) — for
 dynamic instrumentation and security analysis of Windows binaries with
 [Frida](https://frida.re) and the `frida-tools` CLI. It's a cheatsheet + bundled
 reference docs for runtime/dynamic analysis on a Windows process, DLL, or `.exe`:
