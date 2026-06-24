@@ -62,28 +62,6 @@ Pick the interpreter for the tool's venv (uv can supply it — no system Python 
 uv tool install --python 3.12 frida-tools
 ```
 
-## Versioning (read once)
-
-`frida-tools` (the CLI — currently **14.x**) and the `frida` **core** (the native
-engine — **17.x**, what `frida --version` prints) are **separate version lines**;
-`uv tool install frida-tools` pulls a matching core automatically (e.g. frida-tools
-14.10.2 + frida 17.15.3 — not a typo). Pin with `uv tool install "frida-tools==<v>"`.
-
-The version match that **does** matter is **frida core ⇔ `frida-server` / `frida-gadget`**
-for remote/USB targets — they must be the **same** core version (the wire protocol
-isn't stable across versions). This is **irrelevant to local Windows analysis**: the
-agent ships inside the `frida` core wheel, so attaching/spawning local processes needs
-no server.
-
-| Component | Must version-match `frida` core? |
-|---|---|
-| `frida-tools` (CLI) | Yes — enforced by the `frida < 18.0.0` pin |
-| `frida-server` (remote/USB) | Yes — exact version |
-| `frida-gadget` (embedded) | Yes — exact version |
-| Local Windows attach/spawn | N/A — agent is in the core wheel |
-
----
-
 ## Windows prerequisites
 
 - **Python**: latest 3.x recommended. Frida core wheels are `cp37-abi3` → **Python
