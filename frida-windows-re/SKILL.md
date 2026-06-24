@@ -5,14 +5,16 @@ description: >-
   binaries with Frida and the frida-tools CLI (frida REPL, frida-trace,
   frida-ps). Use it for runtime/dynamic analysis of a Windows process, DLL, or
   .exe: hooking and tracing Win32/Native (kernel32, ntdll, advapi32, ws2_32,
-  bcrypt) API calls, intercepting/modifying arguments and return values, dumping
-  decrypted buffers or crypto keys at runtime, monitoring file/registry/network
-  activity, tracing process injection (VirtualAllocEx/WriteProcessMemory/
-  CreateRemoteThread), unpacking, and bypassing anti-debug / anti-Frida checks in
-  malware or protected software. Reach for it on phrasings like "hook this
-  Windows function", "intercept CreateFileW", "dump the decrypted strings",
-  "frida script for Windows", or any Frida / frida-trace mention. Also covers
-  installing frida-tools with uv. Complements rizin-windows-re (static RE).
+  bcrypt) API calls, intercepting/modifying args and return values, dumping
+  decrypted buffers or crypto keys, monitoring file/registry/network I/O, tracing
+  process injection (VirtualAllocEx/WriteProcessMemory/CreateRemoteThread),
+  unpacking, and bypassing anti-debug / anti-Frida checks. Equally for
+  product-security / app-pentest of legitimate thick clients: TLS/HTTPS
+  interception and cert-pinning bypass, auditing secret/key handling (DPAPI,
+  crypto), and license/auth checks. Reach for it on phrasings like "hook this
+  Windows function", "intercept CreateFileW", "frida script for Windows", or any
+  Frida / frida-trace mention. Also covers installing frida-tools with uv.
+  Complements rizin-windows-re (static RE).
 ---
 
 # Frida on Windows — Security Analysis Cheatsheet
@@ -20,18 +22,15 @@ description: >-
 Frida is a dynamic instrumentation toolkit: it injects a JavaScript engine
 (GumJS) into a running native process so you can hook functions, read/write
 memory, trace execution, and rewrite behavior live — no recompilation, no source.
-On Windows this means instrumenting any `.exe`/`.dll`, watching what malware
-*actually* does, dumping data after it's decrypted, and neutralizing
-anti-analysis tricks.
+On Windows it serves two complementary jobs: **malware analysis** — watch what a
+sample *actually* does, dump data after it's decrypted, neutralize anti-analysis
+tricks — and **product security / app-pentest** — audit how legitimate thick
+clients handle TLS, secrets, keys, auth, licensing, and untrusted input.
 
 This skill is a **cheatsheet and an entry point to bundled reference docs**, not
 a workflow. Skim the inline fast paths below, then open the matching reference
 file for depth. Everything here targets **local Windows native analysis**
 (x86/x64), not Android/iOS.
-
-> Use only on software you are authorized to analyze (your own systems, malware
-> in a lab/VM, CTF targets, sanctioned engagements). Analyze untrusted samples in
-> an isolated, disposable VM with no network you care about.
 
 ---
 
@@ -212,7 +211,33 @@ trick in detail (detection + mitigation), organized by mechanism →
 
 ---
 
-## 6. Reference map — what to open when
+## 6. Product security / app-pentest
+
+The same hooks audit *legitimate* software you're authorized to test: read an app's
+TLS plaintext, dump the secrets/keys it handles, prove a client-side license/auth
+gate is bypassable, and map its input attack surface.
+
+```js
+// TLS plaintext from any app on the OS stack (Schannel) — DecryptMessage unseals in place:
+const ssp = Process.getModuleByName('sspicli.dll');
+Interceptor.attach(ssp.getExportByName('DecryptMessage'),
+  { onEnter(a){ this.d = a[1]; }, onLeave(){ /* dump the SECBUFFER_DATA (type 1) buffer of this.d */ } });
+
+// Force a client-side validator (license/auth) — find the RVA statically, then make it return true:
+Interceptor.attach(Process.getModuleByName('app.exe').base.add(0x12a40),
+  { onLeave(r){ r.replace(1); } });           // isLicensed()/checkAuth() -> true
+```
+
+Covers TLS/HTTPS interception + cert-pinning bypass (Schannel, bundled OpenSSL/NSS,
+`CertVerifyCertificateChainPolicy`/`WinVerifyTrust`), secret & key auditing (DPAPI
+`CryptUnprotectData`, Credential Manager, a crypto audit that flags weak algos /
+static IVs / hardcoded keys), auth/license/integrity bypass, sensitive-data flow
+(clipboard, env, named-pipe IPC, JWT/PII detection), and attack-surface mapping +
+Stalker coverage for fuzzing → **[references/product-security.md](references/product-security.md)**.
+
+---
+
+## 7. Reference map — what to open when
 
 | Need | Open |
 |------|------|
@@ -222,6 +247,7 @@ trick in detail (detection + mitigation), organized by mechanism →
 | Copy-paste Win32/Native hooking recipes | [references/windows-hooking-recipes.md](references/windows-hooking-recipes.md) |
 | Defeat anti-debug / anti-Frida checks | [references/anti-debug-bypass.md](references/anti-debug-bypass.md) |
 | The detection tricks themselves, in depth | [references/anti-debug-db/](references/anti-debug-db/) |
+| Product-security / app-pentest recipes (TLS interception, cert-pinning bypass, secret/key audit, auth/license bypass, fuzzing) | [references/product-security.md](references/product-security.md) |
 | `frida-trace` deep dive + handler editing | [references/frida-docs/frida-trace.md](references/frida-docs/frida-trace.md) |
 | **Canonical** full JS API (every class/method) | [references/frida-docs/javascript-api.md](references/frida-docs/javascript-api.md) |
 | Stalker — instruction/branch tracing & coverage | [references/frida-docs/stalker.md](references/frida-docs/stalker.md) |
@@ -251,5 +277,7 @@ Bundled references are copied/adapted from local, openly-licensed sources:
 `oleavr` et al.); `references/anti-debug-db/` from the **Anti-Debug-DB / Check
 Point Anti-Debug encyclopedia** (MIT). The synthesized cheatsheets
 (`install-uv.md`, `cli-tools.md`, `js-api-cheatsheet.md`,
-`windows-hooking-recipes.md`, `anti-debug-bypass.md`) distill those plus the
-`frida-tools` source.
+`windows-hooking-recipes.md`, `anti-debug-bypass.md`, `product-security.md`)
+distill those plus the `frida-tools` source, Microsoft Learn (Win32/SSPI/DPAPI/
+wincrypt/wintrust), OpenSSL/NSS docs, and public Frida appsec write-ups; every
+Windows export↔DLL pairing was checked against live System32 DLLs (`rz-bin`).
