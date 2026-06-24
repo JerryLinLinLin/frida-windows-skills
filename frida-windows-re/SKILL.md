@@ -13,8 +13,7 @@ description: >-
   interception and cert-pinning bypass, auditing secret/key handling (DPAPI,
   crypto), and license/auth checks. Reach for it on phrasings like "hook this
   Windows function", "intercept CreateFileW", "frida script for Windows", or any
-  Frida / frida-trace mention. Also covers installing frida-tools with uv.
-  Complements rizin-windows-re (static RE).
+  Frida / frida-trace mention. Complements rizin-windows-re (static RE).
 ---
 
 # Frida on Windows — Security Analysis Cheatsheet
@@ -32,42 +31,12 @@ a workflow. Skim the inline fast paths below, then open the matching reference
 file for depth. Everything here targets **local Windows native analysis**
 (x86/x64), not Android/iOS.
 
----
-
-## 1. Install (uv)
-
-frida-tools ships **prebuilt wheels** for Windows — no compiler needed. The
-cleanest install is as an isolated `uv` tool:
-
-```powershell
-# one isolated environment, all frida-* commands on PATH
-uv tool install frida-tools
-uv tool update-shell        # ensure the tool bin dir is on PATH (new shell after)
-
-frida --version             # verify (prints frida core version, e.g. 17.x)
-frida-ps                    # list running processes
-```
-
-One-off run without installing, or inside a project venv for the `import frida`
-Python API:
-
-```powershell
-uvx --from frida-tools frida-ps        # ephemeral run
-uv venv; uv pip install frida-tools    # project venv: gives the `frida` python module too
-```
-
-**Version rule:** `frida-tools` (the CLI — currently **14.x**) and the `frida`
-**core** (the native engine — **17.x**, what `frida --version` prints) are
-*separate* version lines; `uv tool install frida-tools` pulls a matching core
-automatically (e.g. frida-tools 14.10.2 + frida 17.15.3 — not a typo). The
-version match that *does* matter is **core ⇔ `frida-server`/`frida-gadget`** for
-remote/USB targets (irrelevant to local Windows analysis). Pin with
-`uv tool install "frida-tools==<v>"`. Full command list, upgrading, and
-troubleshooting → **[references/install-uv.md](references/install-uv.md)**.
+> **Prerequisite:** assumes `frida-tools` is already installed and on `PATH` (check
+> with `frida --version`). To install it, see the project [README](../README.md).
 
 ---
 
-## 2. Mental model (read this once)
+## 1. Mental model (read this once)
 
 - **Local injection needs no server.** On Windows, `frida`/`frida-trace` inject
   directly into local processes. `frida-server` is only for *remote* targets
@@ -78,10 +47,9 @@ troubleshooting → **[references/install-uv.md](references/install-uv.md)**.
     (packers, early anti-debug), then it **auto-resumes**. Add `--pause` to hold at
     the REPL prompt instead and release manually with `%resume`.
   - `frida <name|PID>` — **attach** to an already-running process.
-- **Match the architecture.** A 64-bit Frida injects 64-bit targets; a 32-bit
-  target needs the 32-bit Frida. `uv tool install` matches your Python's arch —
-  use a matching Python for 32-bit targets, or just check `Process.arch` once
-  attached.
+- **Match the architecture.** A 64-bit Frida injects both 32- and 64-bit local
+  targets; a 32-bit-only target needs a 32-bit frida-tools install (see the
+  README). Check `Process.arch` once attached.
 - **Run elevated** for system/protected processes (launch the terminal "as
   Administrator"). PPL/protected processes may still refuse injection.
 - **Wide strings everywhere.** Win32 `...W` APIs take UTF-16 (`LPCWSTR`):
@@ -90,7 +58,7 @@ troubleshooting → **[references/install-uv.md](references/install-uv.md)**.
 
 ---
 
-## 3. CLI fast paths
+## 2. CLI fast paths
 
 ```powershell
 # Discover targets
@@ -127,7 +95,7 @@ frida-trace's include/exclude syntax and the `__handlers__` editing workflow →
 
 ---
 
-## 4. The one hook you'll write most
+## 3. The one hook you'll write most
 
 The universal pattern: resolve an export → `Interceptor.attach` → read args in
 `onEnter` (stash on `this`) → act in `onLeave`.
@@ -179,7 +147,7 @@ NativeFunction with exact signatures) →
 
 ---
 
-## 5. Anti-debug / anti-Frida bypass
+## 4. Anti-debug / anti-Frida bypass
 
 Malware and packers check for debuggers and for Frida itself. Defeat them from a
 Frida script — usually by hooking the detection API and lying, or patching the
@@ -211,7 +179,7 @@ trick in detail (detection + mitigation), organized by mechanism →
 
 ---
 
-## 6. Product security / app-pentest
+## 5. Product security / app-pentest
 
 The same hooks audit *legitimate* software you're authorized to test: read an app's
 TLS plaintext, dump the secrets/keys it handles, prove a client-side license/auth
@@ -237,11 +205,10 @@ Stalker coverage for fuzzing → **[references/product-security.md](references/p
 
 ---
 
-## 7. Reference map — what to open when
+## 6. Reference map — what to open when
 
 | Need | Open |
 |------|------|
-| Install/upgrade frida-tools with uv; full command list | [references/install-uv.md](references/install-uv.md) |
 | Every `frida-*` tool, its flags, and all REPL `%` magics | [references/cli-tools.md](references/cli-tools.md) |
 | Terse JS API reference (security-focused) | [references/js-api-cheatsheet.md](references/js-api-cheatsheet.md) |
 | Copy-paste Win32/Native hooking recipes | [references/windows-hooking-recipes.md](references/windows-hooking-recipes.md) |
@@ -276,8 +243,8 @@ Bundled references are copied/adapted from local, openly-licensed sources:
 `references/frida-docs/` from the **Frida website docs** (frida.re,
 `oleavr` et al.); `references/anti-debug-db/` from the **Anti-Debug-DB / Check
 Point Anti-Debug encyclopedia** (MIT). The synthesized cheatsheets
-(`install-uv.md`, `cli-tools.md`, `js-api-cheatsheet.md`,
-`windows-hooking-recipes.md`, `anti-debug-bypass.md`, `product-security.md`)
-distill those plus the `frida-tools` source, Microsoft Learn (Win32/SSPI/DPAPI/
+(`cli-tools.md`, `js-api-cheatsheet.md`, `windows-hooking-recipes.md`,
+`anti-debug-bypass.md`, `product-security.md`) distill those plus the
+`frida-tools` source, Microsoft Learn (Win32/SSPI/DPAPI/
 wincrypt/wintrust), OpenSSL/NSS docs, and public Frida appsec write-ups; every
 Windows export↔DLL pairing was checked against live System32 DLLs (`rz-bin`).

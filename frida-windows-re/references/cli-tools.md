@@ -1,6 +1,6 @@
 # Frida CLI tools cheatsheet (Windows)
 
-Reference for every `frida-*` command line tool from `frida-tools` (>= 17.10.0). Install with `uv tool install frida-tools` (drops `.exe` shims in `%USERPROFILE%\.local\bin`) or `py -3 -m pip install frida-tools`. For **local Windows targets you need no `frida-server`** — local injection ships in the `frida` core wheel. Verify with `frida --version`.
+Reference for every `frida-*` command line tool from `frida-tools`. Assumes frida-tools is already installed and on PATH (install guide → project README). For **local Windows targets you need no `frida-server`** — local injection ships in the `frida` core wheel. Verify with `frida --version`.
 
 All flags below are verbatim from the `argparse` definitions in `frida_tools\`. Tools fall into two groups: those that need a **device** (`-D/-U/-R/-H`) and those that also need a **target** (`-f/-n/-p`...). The two universal options (`-O`, `--version`) are on every tool.
 
